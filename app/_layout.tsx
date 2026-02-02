@@ -1,24 +1,51 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { Stack, usePathname, useRouter } from 'expo-router'
+import React, { useEffect } from 'react'
+import { ActivityIndicator, View } from 'react-native'
+import { AuthProvider, useAuth } from '../Contexts/Auth'
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+// Loading screen component
+function LoadingScreen() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#145C63' }}>
+      <ActivityIndicator size="large" color="#fff" />
+    </View>
+  )
+}
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+// Root navigator with auth logic
+function RootNavigator() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  // Redirect logic
+  useEffect(() => {
+    if (loading) return // Wait for auth to load
+    
+    if (!user && pathname !== '/login') {
+      router.replace('/login')
+    } else if (user && pathname === '/login') {
+      router.replace('/(tabs)/students')
+    }
+  }, [user, loading, pathname, router])
+
+  if (loading) {
+    return <LoadingScreen />
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="(tabs)" />
+    </Stack>
+  )
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootNavigator />
+    </AuthProvider>
+  )
 }
