@@ -34,17 +34,16 @@ type DayStatus = 'present' | 'absent' | 'field_trip' | 'homeschool_group'
 
 export default function Attendance() {
   const { user } = useAuth()
+  const now = new Date()
+  const currentYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
   const [loading, setLoading] = useState(true)
   const [students, setStudents] = useState<StudentAttendanceSummary[]>([])
-  const [monthCursor, setMonthCursor] = useState<Date>(() => new Date())
+  const [monthCursor, setMonthCursor] = useState<Date>(() => now)
   const [dateStatusMap, setDateStatusMap] = useState<Record<string, DayStatus | 'mixed'>>({})
   const [modalVisible, setModalVisible] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<DayStatus>('present')
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
-  
-  const now = new Date()
-  const currentYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
   const selectedSchoolYear = `${selectedYear}-${selectedYear + 1}`
@@ -57,12 +56,21 @@ export default function Attendance() {
   ]
 
   useFocusEffect(
-    useCallback(() => {
-      if (user && selectedSchoolYear) {
-        loadStudentAttendanceSummaries()
-      }
-    }, [user, selectedYear, selectedMonth])
-  )
+  useCallback(() => {
+    if (user) {
+      const today = new Date()
+      const schoolYear =
+        today.getMonth() >= 6 ? today.getFullYear() : today.getFullYear() - 1
+
+      setSelectedYear(schoolYear)
+      setSelectedMonth(today.getMonth())
+      setMonthCursor(new Date(today.getFullYear(), today.getMonth(), 1))
+
+      loadStudentAttendanceSummaries()
+    }
+  }, [user])
+)
+
 
   const monthDays = useMemo(() => {
     const y = monthCursor.getFullYear()
@@ -71,10 +79,14 @@ export default function Attendance() {
     const last = new Date(y, m + 1, 0)
     const days: { date: string; dayNum: number; weekday: number }[] = []
     
+    const pad = (n: number) => n.toString().padStart(2, '0')
+
     for (let d = 1; d <= last.getDate(); d++) {
-      const current = new Date(y, m, d)
-      const iso = current.toISOString().split('T')[0]
-      days.push({ date: iso, dayNum: d, weekday: current.getDay() })
+        const current = new Date(y, m, d)
+        const date = `${current.getFullYear()}-${pad(current.getMonth() + 1)}-${pad(
+      current.getDate()
+    )}`
+        days.push({ date, dayNum: d, weekday: current.getDay() })
     }
     return { year: y, month: m, days }
   }, [monthCursor])
@@ -500,11 +512,12 @@ const styles = StyleSheet.create({
   },
   weekdaysRow: { 
     flexDirection: 'row', 
-    justifyContent: 'space-between', 
     marginBottom: 6 
   },
   weekday: { 
-    width: 40, 
+    width: '13%', 
+    marginHorizontal: 2,
+    justifyContent: 'center',
     textAlign: 'center', 
     color: '#1F2933', 
     opacity: 0.7 
@@ -512,16 +525,16 @@ const styles = StyleSheet.create({
   calendarGrid: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    gap: 6, 
-    marginBottom: 16 
   },
   calendarCell: { 
-    width: 40, 
+    width: '13%', 
     height: 48, 
     borderRadius: 8, 
     backgroundColor: '#1F2933', 
     alignItems: 'center', 
-    justifyContent: 'center' 
+    justifyContent: 'center' ,
+    marginBottom: 6,
+    marginHorizontal: 2,
   },
   calendarDayNum: { 
     color: 'white',
